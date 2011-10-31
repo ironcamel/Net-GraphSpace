@@ -1,0 +1,9 @@
+Revision history for Net-GraphSpace
+
+0.0002  2011-10-31
+        Fixed mistake in pod docs:
+            Net::GraphSpace does not have a name attribute.
+        Probably lots more of these to come.
+
+0.0001  2011-10-31
+        First version, released on an unsuspecting world.
