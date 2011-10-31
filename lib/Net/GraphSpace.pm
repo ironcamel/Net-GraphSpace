@@ -123,8 +123,6 @@ Required:
 
 The url of the server where GraphSpace is hosted.
 
-=item name
-
 =back
 
 =head1 METHODS
