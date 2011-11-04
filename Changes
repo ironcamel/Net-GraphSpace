@@ -1,5 +1,8 @@
 Revision history for Net-GraphSpace
 
+0.0003  2011-11-04
+        Updating pod docs with examples of non int id's.
+
 0.0002  2011-10-31
         Fixed mistake in pod docs:
             Net::GraphSpace does not have a name attribute.
