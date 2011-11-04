@@ -12,7 +12,8 @@ use Net::GraphSpace::Graph;
 
 has user     => (is => 'ro', isa => 'Str', required => 1);
 has password => (is => 'ro', isa => 'Str', required => 1);
-has server   => (is => 'ro', isa => 'Str', required => 1);
+has host     => (is => 'ro', isa => 'Str', required => 1);
+has port     => (is => 'ro', isa => 'Str', default => 80);
 has _ua      => (
     is      => 'ro',
     isa     => 'LWP::UserAgent',
@@ -20,9 +21,8 @@ has _ua      => (
     default => sub {
         my $self = shift;
         my $ua = LWP::UserAgent->new();
-        my $host = (split m(://), $self->server)[-1];
-        $ua->credentials($host, 'restricted area',
-            $self->user, $self->password); 
+        $ua->credentials(sprintf('%s:%d', $self->host, $self->port),
+            'restricted area', $self->user, $self->password); 
         return $ua;
     },
 );
@@ -35,22 +35,26 @@ has _json => (
 
 method to_json($x) { $self->_json->encode($x) }
 
+method gen_url($path) {
+    return sprintf('http://%s:%d%s', $self->host, $self->port, $path);
+}
+
 method add_graph(Net::GraphSpace::Graph $graph) {
-    my $url = $self->server . '/api/graphs';
+    my $url = $self->gen_url('/api/graphs');
     my $res = $self->_ua->post($url, Content => $self->to_json($graph));
     die msg_from_res($res) unless $res->is_success;
     return decode_json($res->content);
 }
 
 method get_graph(Int $graph_id) {
-    my $url = $self->server . "/api/graphs/$graph_id";
+    my $url = $self->gen_url("/api/graphs/$graph_id");
     my $res = $self->_ua->get($url);
     die msg_from_res($res) unless $res->is_success;
     return Net::GraphSpace::Graph->new_from_http_response($res);
 }
 
 method update_graph(Int $graph_id, Net::GraphSpace::Graph $graph) {
-    my $url = $self->server . "/api/graphs/$graph_id";
+    my $url = $self->gen_url("/api/graphs/$graph_id");
     my $req = HTTP::Request->new(PUT => $url, [], $self->to_json($graph));
     my $res = $self->_ua->request($req);
     die msg_from_res($res) unless $res->is_success;
@@ -58,7 +62,7 @@ method update_graph(Int $graph_id, Net::GraphSpace::Graph $graph) {
 }
 
 method delete_graph(Int $graph_id) {
-    my $url = $self->server . "/api/graphs/$graph_id";
+    my $url = $self->gen_url("/api/graphs/$graph_id");
     my $req = HTTP::Request->new(DELETE => $url);
     my $res = $self->_ua->request($req);
     die msg_from_res($res) unless $res->is_success;
@@ -80,7 +84,7 @@ sub msg_from_res {
     my $client = Net::GraphSpace->new(
         user     => 'bob',
         password => 'secret',
-        server   => 'http://foo.com'
+        host     => 'graphspace.org'
     );
     my $graph = Net::GraphSpace::Graph->new(name => 'yeast ppi');
     my $node1 = Net::GraphSpace::Node->new(id => 'node-a', label => 'A');
@@ -119,9 +123,17 @@ Required:
 
 =item password
 
-=item server
+=item host
 
-The url of the server where GraphSpace is hosted.
+=back
+
+Optional:
+
+=over
+
+=item port
+
+Defaults to 80.
 
 =back
 

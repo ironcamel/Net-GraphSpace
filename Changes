@@ -1,5 +1,8 @@
 Revision history for Net-GraphSpace
 
+0.0004  2011-11-04
+        Net::GraphSpace now has host and port attributes in place of server.
+
 0.0003  2011-11-04
         Updating pod docs with examples of non int id's.
 
