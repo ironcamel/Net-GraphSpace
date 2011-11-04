@@ -82,11 +82,11 @@ method new_from_http_response($class: HTTP::Response $res) {
         description => 'a great graph',
         tags => ['foo', 'bar'],
     );
-    my $node1 = Net::GraphSpace::Node->new(id => 1, label => 'A');
-    my $node2 = Net::GraphSpace::Node->new(id => 2, label => 'B');
+    my $node1 = Net::GraphSpace::Node->new(id => 'node-a', label => 'A');
+    my $node2 = Net::GraphSpace::Node->new(id => 'node-b', label => 'B');
     $graph->add_nodes([$node1, $node2]);
     my $edge = Net::GraphSpace::Edge->new(
-        id => '1-2', source => 1, target => 2);
+        id => 'a-b', source => 'node-a', target => 'node-b');
     $graph->add_edge($edge);
     $graph->add_node(Net::GraphSpace::Node->new(id => 3, label => 'C'));
 
