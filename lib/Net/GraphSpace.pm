@@ -112,6 +112,8 @@ sub msg_from_res {
 =head1 DESCRIPTION
 
 Net::GraphSpace provides bindings for the GraphSpace API.
+GraphSpace is a web based graph/network visualization tool and data store.
+See L<http://graphspace.org> for more information.
 
 =head1 ATTRIBUTES
 
@@ -164,6 +166,14 @@ Returns a Net::GraphSpace::Graph object for the given $graph_id.
 Updates the graph on the server with id $graph_id by replacing it with $graph.
 
 =head2 delete_graph($graph_id)
+
+=head1 SEE ALSO
+
+=over
+
+=item L<http://graphspace.org>
+
+=back
 
 =cut
 
