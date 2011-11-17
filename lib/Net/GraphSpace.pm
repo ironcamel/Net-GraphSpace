@@ -6,9 +6,9 @@ use MooseX::Method::Signatures;
 
 use JSON qw(decode_json);
 use LWP::UserAgent;
-use Net::GraphSpace::Node;
 use Net::GraphSpace::Edge;
 use Net::GraphSpace::Graph;
+use Net::GraphSpace::Node;
 
 has user     => (is => 'ro', isa => 'Str', required => 1);
 has password => (is => 'ro', isa => 'Str', required => 1);
@@ -40,33 +40,38 @@ method gen_url($path) {
 }
 
 method add_graph(Net::GraphSpace::Graph $graph) {
-    my $url = $self->gen_url('/api/graphs');
+    my $user = $self->user;
+    my $url = $self->gen_url("/api/users/$user/graphs");
     my $res = $self->_ua->post($url, Content => $self->to_json($graph));
     die msg_from_res($res) unless $res->is_success;
     return decode_json($res->content);
 }
 
-method get_graph(Int $graph_id) {
-    my $url = $self->gen_url("/api/graphs/$graph_id");
+method get_graph(Str $graph_id) {
+    my $user = $self->user;
+    my $url = $self->gen_url("/api/users/$user/graphs/$graph_id");
     my $res = $self->_ua->get($url);
-    die msg_from_res($res) unless $res->is_success;
+    #die msg_from_res($res) unless $res->is_success;
+    return undef unless $res->is_success;
     return Net::GraphSpace::Graph->new_from_http_response($res);
 }
 
-method update_graph(Int $graph_id, Net::GraphSpace::Graph $graph) {
-    my $url = $self->gen_url("/api/graphs/$graph_id");
+method set_graph(Net::GraphSpace::Graph $graph, Str $graph_id) {
+    my $user = $self->user;
+    my $url = $self->gen_url("/api/users/$user/graphs/$graph_id");
     my $req = HTTP::Request->new(PUT => $url, [], $self->to_json($graph));
     my $res = $self->_ua->request($req);
     die msg_from_res($res) unless $res->is_success;
     return decode_json($res->content);
 }
 
-method delete_graph(Int $graph_id) {
-    my $url = $self->gen_url("/api/graphs/$graph_id");
+method delete_graph(Str $graph_id) {
+    my $user = $self->user;
+    my $url = $self->gen_url("/api/users/$user/graphs/$graph_id");
     my $req = HTTP::Request->new(DELETE => $url);
     my $res = $self->_ua->request($req);
     die msg_from_res($res) unless $res->is_success;
-    return decode_json($res->content);
+    return 1;
 }
 
 sub msg_from_res {
@@ -80,13 +85,14 @@ sub msg_from_res {
 
     use Net::GraphSpace;
     use JSON qw(decode_json);
+    use Try::Tiny;
 
     my $client = Net::GraphSpace->new(
         user     => 'bob',
         password => 'secret',
         host     => 'graphspace.org'
     );
-    my $graph = Net::GraphSpace::Graph->new(name => 'yeast ppi');
+    my $graph = Net::GraphSpace::Graph->new(description => 'yeast ppi');
     my $node1 = Net::GraphSpace::Node->new(id => 'node-a', label => 'A');
     my $node2 = Net::GraphSpace::Node->new(id => 'node-b', label => 'B');
     my $edge = Net::GraphSpace::Edge->new(
@@ -95,19 +101,30 @@ sub msg_from_res {
     $graph->add_edge($edge);
     $graph->add_node(Net::GraphSpace::Node->new(id => 3, label => 'C'));
 
-    # Upload graph to server
-    my $data = $client->add_graph($graph);
-    my $graph_id = $data->{id};
+    # Upload graph to server and set the graph id
+    my $graph_id = 'graph-id-1';
+    my $data = $client->set_graph($graph, $graph_id);
     my $url = $data->{url};
+
+    # Upload graph to server and have server autogenerate the graph id
+    $data = $client->add_graph($graph);
+    $graph_id = $data->{id};
+    $url = $data->{url};
     print "Your graph (id: $graph_id) can be viewed at $url\n";
 
     # Get and update a graph
-    $graph = $clent->get_graph($graph_id);
+    $graph = $clent->get_graph($graph_id)
+        or die "Could not find graph $graph_id";
     $graph->tags(['foo', 'bar']);
-    $client->update_graph($graph_id, $graph);
+    $client->set_graph($graph, $graph_id);
 
     # Delete a graph
-    $client->delete_graph($graph_id);
+    try {
+        $client->delete_graph($graph_id);
+        print "Deleted graph $graph_id: $_\n";
+    } catch {
+        print "Could not delete graph $graph_id: $_\n";
+    };
 
 =head1 DESCRIPTION
 
@@ -145,9 +162,22 @@ Defaults to 80.
 
 Takes key/value arguments corresponding to the attributes above.
 
+=head2 get_graph($graph_id)
+
+Returns a Net::GraphSpace::Graph object for the given $graph_id.
+Returns undef if the graph could not be found.
+
+=head2 set_graph($graph, $graph_id)
+
+Creates or updates the graph on the server with id $graph_id.
+Returns a hashref just like add_graph().
+Dies on server error.
+
 =head2 add_graph($graph)
 
 Takes a Net::GraphSpace::Graph object and uploads it.
+Use this method only if you don't care what id is assigned to your graph.
+Otherwise, use set_graph to create your graph.
 Returns a hashref of the form:
 
     {
@@ -156,16 +186,13 @@ Returns a hashref of the form:
     }
 
 The url is the location where the graph can be viewed.
-
-=head2 get_graph($graph_id)
-
-Returns a Net::GraphSpace::Graph object for the given $graph_id.
-
-=head2 update_graph($graph_id, $graph)
-
-Updates the graph on the server with id $graph_id by replacing it with $graph.
+Dies on server error.
 
 =head2 delete_graph($graph_id)
+
+Deletes the graph with id $graph_id.
+Returns a true value on success.
+Dies on failure or if the graph didn't exist.
 
 =head1 SEE ALSO
 
