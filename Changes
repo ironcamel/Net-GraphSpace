@@ -1,5 +1,8 @@
 Revision history for Net-GraphSpace
 
+0.0006  2011-11-17
+        Updating to support the new GraphSpace resource hierarchy.
+
 0.0005  2011-11-06
         Updating pod docs with links to http://graphspace.org.
 
