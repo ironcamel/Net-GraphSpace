@@ -9,8 +9,7 @@ has target   => (is => 'ro', isa => 'Str', required => 1);
 has label    => (is => 'rw', isa => 'Str');
 has popup    => (is => 'rw', isa => 'Str');
 has color    => (is => 'rw', isa => 'Str');
-has size     => (is => 'rw', isa => 'Num');
-has shape    => (is => 'rw', isa => 'Str');
+has width    => (is => 'rw', isa => 'Num');
 has graph_id => (is => 'rw', isa => 'Int');
 has labelFontWeight => (is => 'rw', isa => 'Str');
 
@@ -24,7 +23,7 @@ has labelFontWeight => (is => 'rw', isa => 'Str');
         popup    => 'stuff that goes in the popup window',
         color    => '#FF0000',
         width    => 5.5,
-        graph_id => 2,
+        graph_id => 'graph22',
         labelFontWeight => 'bold',
     );
 

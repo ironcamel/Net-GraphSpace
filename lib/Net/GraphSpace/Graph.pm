@@ -1,6 +1,5 @@
 package Net::GraphSpace::Graph;
 use Moose;
-use MooseX::Method::Signatures;
 
 use Carp qw(croak);
 use JSON qw(decode_json);
@@ -28,14 +27,14 @@ has _nodes_map  => (
     default => sub { {} },
 );
 
-method add_node(Net::GraphSpace::Node $node) {
+sub add_node {
+    my ($self, $node) = @_;
     push @{ $self->_nodes }, $node;
     $self->_nodes_map->{$node->id} = $node;
 }
 
-method add_nodes($nodes) { $self->add_node($_) foreach @$nodes }
-
-method add_edge(Net::GraphSpace::Edge $edge) {
+sub add_edge {
+    my ($self, $edge) = @_;
     croak "No such node corresponds to the edge's source node " . $edge->source
         unless $self->_nodes_map->{$edge->source};
     croak "No such node corresponds to the edge's target node " . $edge->target
@@ -43,9 +42,12 @@ method add_edge(Net::GraphSpace::Edge $edge) {
     push @{ $self->_edges }, $edge;
 }
 
-method add_edges($edges) { $self->add_edge($_) foreach @$edges }
+sub add_nodes { $_[0]->add_node($_) foreach @{$_[1]} }
 
-method TO_JSON() {
+sub add_edges { $_[0]->add_edge($_) foreach @{$_[1]} }
+
+sub TO_JSON {
+    my ($self) = @_;
     return {
         metadata => {
             map { defined($self->$_) ? ( $_ => $self->$_ ) : () }
@@ -57,9 +59,10 @@ method TO_JSON() {
     };
 }
 
-method new_from_http_response($class: HTTP::Response $res) {
-    my $data = decode_json($res->content);
+sub new_from_http_response {
+    my($class, $res) = @_;
 
+    my $data = decode_json($res->content);
     my $metadata = $data->{metadata};
     my $graph = Net::GraphSpace::Graph->new();
     $graph->description($metadata->{description})

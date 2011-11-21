@@ -1,14 +1,15 @@
 package Net::GraphSpace::AttributesToJSON;
 use Moose::Role;
-use MooseX::Method::Signatures;
 use v5.10;
 
-method TO_JSON() {
+sub TO_JSON {
+    my ($self) = @_;
     my @attrs = $self->meta->get_all_attributes;
     return { map $self->_affinitize($_), @attrs };
 }
 
-method _affinitize($attr) {
+sub _affinitize {
+    my ($self, $attr) = @_;
     my $name = $attr->name;
     my $value = $self->$name;
     return if not defined $value;
