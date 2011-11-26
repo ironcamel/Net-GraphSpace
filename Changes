@@ -1,5 +1,9 @@
 Revision history for Net-GraphSpace
 
+0.0008  2011-11-26
+        Added get_graphs method.
+        Simplified Net::GraphSpace constructor.
+
 0.0007  2011-11-21
         Removed MooseX::Method::Signatures dep + misc stuff.
 

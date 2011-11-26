@@ -12,35 +12,37 @@ use Net::GraphSpace::Node;
 
 has user     => (is => 'ro', isa => 'Str', required => 1);
 has password => (is => 'ro', isa => 'Str', required => 1);
-has host     => (is => 'ro', isa => 'Str', default => 'graphspace.org');
-has port     => (is => 'ro', isa => 'Str', default => 80);
-has prefix   => (is => 'ro', isa => 'Str', default => '');
-has _ua      => (
+has url      => (is => 'ro', isa => 'Str', default => 'http://graphspace.org');
+has _base    => (
+    is => 'ro',
+    lazy => 1,
+    default => sub {
+        my $url = shift->url;
+        $url =~ s{/$}{};
+        return URI->new("$url/api/");
+    }
+);
+has _ua => (
     is      => 'ro',
     isa     => 'LWP::UserAgent',
     lazy    => 1,
     default => sub {
         my $self = shift;
+        my $base = $self->_base;
         my $ua = LWP::UserAgent->new();
-        $ua->credentials(sprintf('%s:%d', $self->host, $self->port),
+        $ua->credentials(sprintf('%s:%d', $base->host, $base->port),
             'restricted area', $self->user, $self->password); 
         return $ua;
     },
 );
-has _json => (
-    is      => 'ro',
-    isa     => 'JSON',
-    lazy    => 1,
-    default => sub { JSON->new->convert_blessed->utf8 },
-);
 
-sub to_json { $_[0]->_json->encode($_[1]) }
+my $JSON = JSON->new->convert_blessed->utf8;
+sub to_json { $JSON->encode(shift) }
 
-sub gen_url {
+sub gen_uri {
     my ($self, $path) = @_;
-    my ($host, $port, $prefix) = ($self->host, $self->port, $self->prefix);
-    s{^/}{}, s{/$}{} foreach ($prefix, $path);
-    return "http://$host:$port/$prefix/$path";
+    #return URI->new_abs($path, $self->_base)->as_string;
+    return URI->new_abs($path, $self->_base);
 }
 
 sub add_graph {
@@ -54,12 +56,12 @@ sub add_graph {
             die "ERROR: Graph [$graph_id] already exists"
                 if $self->get_graph($graph_id);
         }
-        my $url = $self->gen_url("/api/users/$user/graphs/$graph_id");
-        my $req = HTTP::Request->new(PUT => $url, [], $self->to_json($graph));
+        my $uri = $self->gen_uri("users/$user/graphs/$graph_id");
+        my $req = HTTP::Request->new(PUT => $uri, [], to_json($graph));
         $res = $self->_ua->request($req);
     } else {
-        my $url = $self->gen_url("/api/users/$user/graphs");
-        $res = $self->_ua->post($url, Content => $self->to_json($graph));
+        my $uri = $self->gen_uri("users/$user/graphs");
+        $res = $self->_ua->post($uri, Content => to_json($graph));
     }
     die msg_from_res($res) unless $res->is_success;
     return decode_json($res->content);
@@ -69,19 +71,31 @@ sub get_graph {
     my ($self, $graph_id) = @_;
 
     my $user = $self->user;
-    my $url = $self->gen_url("/api/users/$user/graphs/$graph_id");
-    my $res = $self->_ua->get($url);
+    my $uri = $self->gen_uri("users/$user/graphs/$graph_id");
+    my $res = $self->_ua->get($uri);
     return undef if $res->code == 404;
     die msg_from_res($res) unless $res->is_success;
     return Net::GraphSpace::Graph->new_from_http_response($res);
+}
+
+sub get_graphs {
+    my ($self, %args) = @_;
+    my $tag = $args{tag};
+
+    my $user = $self->user;
+    my $uri = $self->gen_uri("users/$user/graphs");
+    $uri->query_form(tag => $tag) if defined $tag;
+    my $res = $self->_ua->get($uri);
+    die msg_from_res($res) unless $res->is_success;
+    return decode_json($res->content)->{graphs};
 }
 
 sub update_graph {
     my ($self, $graph, $graph_id) = @_;
 
     my $user = $self->user;
-    my $url = $self->gen_url("/api/users/$user/graphs/$graph_id");
-    my $req = HTTP::Request->new(PUT => $url, [], $self->to_json($graph));
+    my $uri = $self->gen_uri("users/$user/graphs/$graph_id");
+    my $req = HTTP::Request->new(PUT => $uri, [], to_json($graph));
     my $res = $self->_ua->request($req);
     die msg_from_res($res) unless $res->is_success;
     return decode_json($res->content);
@@ -91,8 +105,8 @@ sub delete_graph {
     my ($self, $graph_id) = @_;
 
     my $user = $self->user;
-    my $url = $self->gen_url("/api/users/$user/graphs/$graph_id");
-    my $req = HTTP::Request->new(DELETE => $url);
+    my $uri = $self->gen_uri("users/$user/graphs/$graph_id");
+    my $req = HTTP::Request->new(DELETE => $uri);
     my $res = $self->_ua->request($req);
     die msg_from_res($res) unless $res->is_success;
     return 1;
@@ -114,7 +128,7 @@ sub msg_from_res {
     my $client = Net::GraphSpace->new(
         user     => 'bob',
         password => 'secret',
-        host     => 'graphspace.org'
+        url      => 'http://graphspace.org'
     );
     my $graph = Net::GraphSpace::Graph->new(description => 'yeast ppi');
     my $node1 = Net::GraphSpace::Node->new(id => 'node-a', label => 'A');
@@ -137,7 +151,7 @@ sub msg_from_res {
     print "Your graph (id: $graph_id) can be viewed at $url\n";
 
     # Get and update a graph
-    $graph = $clent->get_graph($graph_id)
+    $graph = $client->get_graph($graph_id)
         or die "Could not find graph $graph_id";
     $graph->tags(['foo', 'bar']);
     $client->update_graph($graph, $graph_id);
@@ -172,20 +186,9 @@ Optional:
 
 =over
 
-=item host
+=item url
 
-Defaults to 'graphspace.org'.
-
-=item port
-
-Defaults to 80.
-
-=item prefix
-
-Defaults to ''.
-Set this if GraphSpace is not hosted at the root of your server.
-For example, if GraphSpace is hosted at http://myserver.com/gs,
-then set C<prefix =E<gt> '/gs'>.
+Defaults to 'http://graphspace.org'.
 
 =back
 
@@ -199,10 +202,21 @@ Takes key/value arguments corresponding to the attributes above.
 
 =head2 get_graph
 
-    $graph = $clent->get_graph($graph_id)
+    $graph = $client->get_graph($graph_id)
 
 Returns a Net::GraphSpace::Graph object for the given $graph_id.
 Returns undef if the graph could not be found.
+
+=head2 get_graphs
+
+    $graph = $client->get_graphs()
+    $graph = $client->get_graphs(tag => 'foo')
+
+Given no arguments, returns all graphs for the logged in user.
+Given a tag param, returns the corresponding graphs.
+Returns an arrayref of the form:
+
+    [ { id => 1, url => 'http://...' }, { id => 2, url => 'http://...' } ]
 
 =head2 add_graph
 
@@ -222,10 +236,7 @@ the server.
 Also, if the graph already exists, it will get overwritten as if update_graph() was called.
 Returns a hashref of the form:
 
-    {
-        id => 1,
-        url => 'http://...',
-    }
+    { id => 1, url => 'http://...' }
 
 The url is the location where the graph can be viewed.
 Dies on server error.

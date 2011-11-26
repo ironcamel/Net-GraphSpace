@@ -10,7 +10,7 @@ has label    => (is => 'rw', isa => 'Str');
 has popup    => (is => 'rw', isa => 'Str');
 has color    => (is => 'rw', isa => 'Str');
 has width    => (is => 'rw', isa => 'Num');
-has graph_id => (is => 'rw', isa => 'Int');
+has graph_id => (is => 'rw', isa => 'Str');
 has labelFontWeight => (is => 'rw', isa => 'Str');
 
 =head1 SYNOPSIS
