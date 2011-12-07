@@ -9,7 +9,7 @@ has id    => (is => 'ro', isa => 'Str', required => 1);
 has label => (is => 'rw', isa => 'Str');
 has popup => (is => 'rw', isa => 'Str');
 has color => (is => 'rw', isa => 'Str');
-has size  => (is => 'rw', isa => 'Num');
+has size  => (is => 'rw', isa => 'Str');
 has shape => (is => 'rw', isa => 'Str');
 has graph_id        => (is => 'rw', isa => 'Str');
 has borderWidth     => (is => 'rw', isa => 'Num');
@@ -22,7 +22,7 @@ has labelFontWeight => (is => 'rw', isa => 'LabelFontWeight');
         label => 'Node A',
         popup => 'stuff that goes in the popup window',
         color => '#FF0000',
-        size  => 10.5,
+        size  => 'auto',
         shape => 'RECTANGLE',
         graph_id        => 'graph22',
         borderWidth     => 2.5,
@@ -60,11 +60,13 @@ Currently, this can contain some html.
 
 =item color
 
-The node color in hex format. Example: '#F00' or '#F2F2F2'
+The node color in hex format. Examples: '#F00', '#F2F2F2'
 
 =item size
 
-The node size. Example: 10.5
+The node size.
+If set to 'auto', the node is automatically sized to fit the label.
+Examples: 42, 10.5, 'auto'
 
 =item shape   
 
